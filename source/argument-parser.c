@@ -1,200 +1,158 @@
 #include "argument-parser.h"
 
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <limits.h>
+#include <stdio.h>
 
-enum argument_parser_error
-{
-	PARSER_ERROR_STANDARD_LIBRARY,
-	PARSER_ERROR_UNDEFINED,
-	PARSER_ERROR_WRONG_FORMAT,
+#define NAME_MAX 64
+
+struct argument_info {
+	char *name;
+	char *longname;
+	char *description;
+
+	ArgumentValue *output;
+
+	ArgumentParserType type;
 };
 
-typedef enum argument_parser_error ParserError;
-
-struct argument_parser
-{
-	char **args;
-	int count;
-
-	void *value;
-
-	ParserError reason;
+struct parsed_argument {
+	char name[NAME_MAX];
+	char *value;
 };
 
-static const char * const error_string[] = {
-	[PARSER_ERROR_STANDARD_LIBRARY] = "Standard library error",
-	[PARSER_ERROR_UNDEFINED] = "Undefined",
-	[PARSER_ERROR_WRONG_FORMAT] = "Wrong Format"
+struct argument_parser {
+	int argc;
+	char **argv;
+
+	int num_args;
+	struct argument_info args[MAX_ARGUMENTS];
+
+	int num_parsed;
+	struct parsed_argument parsed[MAX_ARGUMENTS];
 };
 
-static int find_token_index(char **args, char *token)
-{
-	for (int i = 0; args[i]; i++)
-	{
-		if (args[i][0] != '-')
-			continue;
-
-		if (strcmp(&args[i][1], token))
-			continue;
-
-		return i;
+static struct argument_info *find_argument(
+	ArgumentParser parser, const char *name
+) {
+	for (int i = 0; i < parser->num_args; i++) {
+		if (strcmp(parser->args[i].name, name) == 0 ||
+		    strcmp(parser->args[i].longname, name) == 0)
+		{
+			return &parser->args[i];
+		}
 	}
 
-	return -1;
+	return NULL;
 }
 
 ArgumentParser argument_parser_create(char *args[])
 {
-	ArgumentParser parser;
+	ArgumentParser parser = malloc(sizeof(struct argument_parser));
 
-	parser = malloc(sizeof(struct argument_parser));
-	if (parser == NULL) {
-		parser->reason = PARSER_ERROR_STANDARD_LIBRARY;
+	if (parser == NULL)
 		return NULL;
-	}
-	
-	parser->value = NULL;
 
-	parser->args = args;
+	parser->num_args = 0;
+	parser->num_parsed = 0;
+
+	parser->argv = args;
 	for (int i = 0; args[i]; i++)
-		parser->count = i;
+		parser->argc = i;
 
 	return parser;
 }
 
-bool argument_parser_has(ArgumentParser parser, char *token)
-{
-	return find_token_index(parser->args, token) > 0;
+void argument_parser_add(
+	ArgumentParser parser,
+	char *name, char *longname, char *description,
+	ArgumentValue *output, ArgumentParserType type
+) {
+	int n = parser->num_args;
+
+	parser->args[n].name = name;
+	parser->args[n].longname = longname;
+	parser->args[n].description = description;
+	parser->args[n].output = output;
+	parser->args[n].type = type;
+
+	parser->num_args++;
 }
 
-const long *argument_parser_get_int(ArgumentParser parser, char *token)
+int argument_parser_parse(ArgumentParser parser)
 {
-	int index = find_token_index(parser->args, token);
-
-	if (index++ < 0) {
-		parser->reason = PARSER_ERROR_UNDEFINED;
-		return NULL;
-	}
-
-	if (parser->value != NULL) {
-		free(parser->value);
-		parser->value = NULL;
-	}
-
-	parser->value = malloc(sizeof(long));
-	if (parser->value == NULL) {
-		parser->reason = PARSER_ERROR_STANDARD_LIBRARY;
-		return NULL;
-	}
-
-	char *endptr;
-	long value = strtol(parser->args[index], &endptr, 10);
-	if (endptr == parser->args[index]) {
-		parser->reason = PARSER_ERROR_WRONG_FORMAT;
-		return NULL;
-	}
-
-	*(long *) parser->value = (long) value;
-
-	return parser->value;
-}
-
-const char (*argument_parser_get_string(ArgumentParser parser, char *token))[]
-{
-	int index = find_token_index(parser->args, token);
-
-	if (index++ < 0)
-		return NULL;
-
-	if (parser->value != NULL) {
-		free(parser->value);
-		parser->value = NULL;
-	}
-
-	size_t len = strlen(parser->args[index]);
-	parser->value = malloc(len + 1);
-	if (parser->value == NULL) {
-		parser->reason = PARSER_ERROR_STANDARD_LIBRARY;
-		return NULL;
-	}
-
-	memcpy(parser->value, parser->args[index], len + 1);
-
-	return parser->value;
-}
-
-const double *argument_parser_get_float(ArgumentParser parser, char *token)
-{
-	int index = find_token_index(parser->args, token);
-
-	if (index++ < 0) {
-		parser->reason = PARSER_ERROR_UNDEFINED;
-		return NULL;
-	}
-
-	if (parser->value != NULL) {
-		free(parser->value);
-		parser->value = NULL;
-	}
-
-	parser->value = malloc(sizeof(double));
-	if (parser->value == NULL) {
-		parser->reason = PARSER_ERROR_STANDARD_LIBRARY;
-		return NULL;
-	}
-
-	int retval = sscanf(
-		parser->args[index], "%lf", (double *) parser->value
-	);
-	if (retval != 1) {
-		parser->reason = (retval == EOF)
-			? PARSER_ERROR_STANDARD_LIBRARY 
-			: PARSER_ERROR_WRONG_FORMAT
-		;
-
-		return NULL;
-	}
+	struct argument_info *info;
+	struct parsed_argument *parsed;
 	
-	return parser->value;
-}
+	for (int i = 1; i <= parser->argc; i++) {
+		char *arg, *end;
 
-const char *argument_parser_get_char(ArgumentParser parser, char *token)
-{
-	int index = find_token_index(parser->args, token);
+		parsed = &parser->parsed[parser->num_parsed];
+		arg = parser->argv[i];
 
-	if (index++ < 0) {
-		parser->reason = PARSER_ERROR_UNDEFINED;
-		return NULL;
+		if (*arg != '-')
+			return -1;
+		arg++;
+
+		if (*arg == '-') {
+			arg++;
+
+			end = strchr(arg, '=');
+			if (end == NULL) {
+				strcpy(parsed->name, arg);
+			} else {
+				strncpy(parsed->name, arg, end - arg);
+				parsed->name[end - arg] = '\0';
+			}
+
+			end++;
+		} else {
+			strcpy(parsed->name, arg);
+
+			if (parser->argv[i + 1] == NULL
+			||  *parser->argv[i + 1] == '-')
+			{
+				parser->num_parsed++;
+				parsed->value = NULL;
+				continue;
+			}
+
+			arg = parser->argv[++i];
+			end = arg;
+		}
+
+		parsed->value = end;
+		parser->num_parsed++;
 	}
 
-	if (parser->value != NULL) {
-		free(parser->value);
-		parser->value = NULL;
+	for (int i = 0; i < parser->num_parsed; i++) {
+		parsed = &parser->parsed[i];
+		info = find_argument(parser, parsed->name);
+
+		if (info == NULL)
+			return -1;
+
+		if (info->type & ARGUMENT_PARSER_TYPE_BOOLEAN) {
+			*info->output = (ArgumentValue)1;
+			continue;
+		}
+
+		if (parsed->value == NULL)
+			return -1;
+
+		if (info->type & ARGUMENT_PARSER_TYPE_INTEGER) {
+			info->output->i = atoi(parsed->value);
+		} else if (info->type & ARGUMENT_PARSER_TYPE_STRING) {
+			info->output->s = parsed->value;
+		} else {
+			return -1;
+		}
 	}
 
-	parser->value = malloc(sizeof(char));
-	if (parser->value == NULL) {
-		parser->reason = PARSER_ERROR_STANDARD_LIBRARY;
-		return NULL;
-	}
-
-	* (char *) parser->value = *parser->args[index];
-
-	return parser->value;
-}
-
-const char * argument_parser_error(ArgumentParser parser)
-{
-	return error_string[parser->reason];
+	return 0;
 }
 
 void argument_parser_destroy(ArgumentParser parser)
 {
-	if (parser->value)
-		free(parser->value);
-
 	free(parser);
 }

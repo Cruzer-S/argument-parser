@@ -1,34 +1,43 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
 
 #include "argument-parser.h"
 
 int main(int argc, char *argv[])
 {
 	ArgumentParser parser;
-	int retval = -1;
+	ArgumentValue name, flag, port;
 
 	parser = argument_parser_create(argv);
 	if (parser == NULL)
 		exit(EXIT_FAILURE);
 
-	if ( !argument_parser_has(parser, "range") ) {
-		fprintf(stderr, "usage: %s -range <number>\n", argv[0]);
-		goto CLEANUP;
-	}
+	name.s = "default name";
+	flag.b = false;
+	port.i = 1584;
 
-	const long *range = argument_parser_get(parser, "range", int);
-	if (range == NULL) {
-		fprintf(stderr, "Failed to get <range>: %s\n", 
-	  		argument_parser_error(parser));
-		goto CLEANUP;
-	}
+	argument_parser_add(
+		parser, "n", "name", "this is name", &name,
+		ARGUMENT_PARSER_TYPE_STRING
+	);
 
-	srand( (unsigned int) time(NULL) );
- 	printf("random number: %d\n", rand() % ( (int) *range ) );
+	argument_parser_add(
+		parser, "f", "flag", "this is flag", &flag,
+		ARGUMENT_PARSER_TYPE_BOOLEAN
+	);
 
-	retval = 0;
-CLEANUP: argument_parser_destroy(parser);
-	return retval;
+	argument_parser_add(
+		parser, "p", "port", "this is port number", &port,
+		ARGUMENT_PARSER_TYPE_INTEGER
+	);
+
+	argument_parser_parse(parser);
+
+	printf("name: %s\n", name.s);
+	printf("flag_on: %s\n", flag.b ? "on" : "off");
+	printf("port: %d\n", port.i);
+
+	argument_parser_destroy(parser);
+
+	return 0;
 }
