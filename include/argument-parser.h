@@ -22,7 +22,6 @@ typedef union argument_value {
 	int i;
 	char *s;
 	bool b;
-	void *p;
 } ArgumentValue;
 
 ArgumentParser argument_parser_create(char *args[]);
