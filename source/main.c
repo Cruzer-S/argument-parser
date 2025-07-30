@@ -3,11 +3,11 @@
 
 #include "argument-parser.h"
 
+#define ARRAY_SIZE(ARR) sizeof(ARR) / sizeof(*ARR)
+
 char *name = "default name";
 bool flag = false;
 int port = 1584;
-
-#define ARRAY_SIZE(ARR) sizeof(ARR) / sizeof(*ARR)
 
 struct argument_info argument_info[] = {
 	{
