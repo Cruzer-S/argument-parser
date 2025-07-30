@@ -44,6 +44,22 @@ static struct argument_info *find_argument(
 	return NULL;
 }
 
+static bool check_duplicate_name(
+	ArgumentParser parser, char *name, char *longname
+) {
+	for (int i = 0; i < parser->num_args; i++) {
+		if (!strcmp(parser->args[i].name, name)
+      		 || !strcmp(parser->args[i].name, longname))
+			return true;
+
+		if (!strcmp(parser->args[i].longname, name)
+		 || !strcmp(parser->args[i].longname, longname))
+			return true;
+	}
+
+	return false;
+}
+
 ArgumentParser argument_parser_create(char *args[])
 {
 	ArgumentParser parser = malloc(sizeof(struct argument_parser));
@@ -69,6 +85,9 @@ int argument_parser_add(
 	int n = parser->num_args;
 
 	if (strlen(name) >= MAX_NAME_LEN || strlen(longname) >= MAX_NAME_LEN)
+		return -1;
+
+	if (check_duplicate_name(parser, name, longname))
 		return -1;
 
 	parser->args[n].name = name;
