@@ -36,7 +36,7 @@ struct argument_info {
 
 ArgumentParser argument_parser_create(char *args[]);
 
-int argument_parser_add(ArgumentParser , ArgumentInfo );
+void argument_parser_add(ArgumentParser , ArgumentInfo );
 
 int argument_parser_parse(ArgumentParser );
 
