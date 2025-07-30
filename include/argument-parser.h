@@ -27,8 +27,7 @@ typedef union argument_value {
 ArgumentParser argument_parser_create(char *args[]);
 
 void argument_parser_add(ArgumentParser,
-			 char name[MAX_NAME_LEN], char longname[MAX_NAME_LEN],
-			 char *description,
+			 char *name, char *longname, char *description,
 			 ArgumentValue *output, ArgumentParserType );
 
 int argument_parser_parse(ArgumentParser );
