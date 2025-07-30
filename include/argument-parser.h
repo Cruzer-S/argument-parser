@@ -5,6 +5,7 @@
 #include <stddef.h>
 
 #define MAX_ARGUMENTS	128
+#define MAX_NAME_LEN	64
 
 struct argument_parser;
 
@@ -26,7 +27,8 @@ typedef union argument_value {
 ArgumentParser argument_parser_create(char *args[]);
 
 void argument_parser_add(ArgumentParser,
-			 char *name, char *longname, char *description,
+			 char name[MAX_NAME_LEN], char longname[MAX_NAME_LEN],
+			 char *description,
 			 ArgumentValue *output, ArgumentParserType );
 
 int argument_parser_parse(ArgumentParser );

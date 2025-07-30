@@ -4,8 +4,6 @@
 #include <string.h>
 #include <stdio.h>
 
-#define NAME_MAX 64
-
 struct argument_info {
 	char *name;
 	char *longname;
@@ -17,7 +15,7 @@ struct argument_info {
 };
 
 struct parsed_argument {
-	char name[NAME_MAX];
+	char name[MAX_NAME_LEN];
 	char *value;
 };
 
@@ -65,7 +63,7 @@ ArgumentParser argument_parser_create(char *args[])
 
 void argument_parser_add(
 	ArgumentParser parser,
-	char *name, char *longname, char *description,
+	char name[MAX_NAME_LEN], char longname[MAX_NAME_LEN], char *description,
 	ArgumentValue *output, ArgumentParserType type
 ) {
 	int n = parser->num_args;
