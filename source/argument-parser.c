@@ -4,16 +4,6 @@
 #include <string.h>
 #include <stdio.h>
 
-struct argument_info {
-	char *name;
-	char *longname;
-	char *description;
-
-	ArgumentValue *output;
-
-	ArgumentParserType type;
-};
-
 struct parsed_argument {
 	char name[MAX_NAME_LEN];
 	char *value;
@@ -24,7 +14,7 @@ struct argument_parser {
 	char **argv;
 
 	int num_args;
-	struct argument_info args[MAX_ARGUMENTS];
+	ArgumentInfo info[MAX_ARGUMENTS];
 
 	int num_parsed;
 	struct parsed_argument parsed[MAX_ARGUMENTS];
@@ -34,10 +24,10 @@ static struct argument_info *find_argument(
 	ArgumentParser parser, const char *name
 ) {
 	for (int i = 0; i < parser->num_args; i++) {
-		if (strcmp(parser->args[i].name, name) == 0 ||
-		    strcmp(parser->args[i].longname, name) == 0)
+		if (strcmp(parser->info[i]->name, name) == 0 ||
+		    strcmp(parser->info[i]->longname, name) == 0)
 		{
-			return &parser->args[i];
+			return parser->info[i];
 		}
 	}
 
@@ -48,12 +38,12 @@ static bool check_duplicate_name(
 	ArgumentParser parser, char *name, char *longname
 ) {
 	for (int i = 0; i < parser->num_args; i++) {
-		if (!strcmp(parser->args[i].name, name)
-      		 || !strcmp(parser->args[i].name, longname))
+		if (!strcmp(parser->info[i]->name, name)
+      		 || !strcmp(parser->info[i]->name, longname))
 			return true;
 
-		if (!strcmp(parser->args[i].longname, name)
-		 || !strcmp(parser->args[i].longname, longname))
+		if (!strcmp(parser->info[i]->longname, name)
+		 || !strcmp(parser->info[i]->longname, longname))
 			return true;
 	}
 
@@ -77,26 +67,16 @@ ArgumentParser argument_parser_create(char *args[])
 	return parser;
 }
 
-int argument_parser_add(
-	ArgumentParser parser,
-	char name[MAX_NAME_LEN], char longname[MAX_NAME_LEN], char *description,
-	ArgumentValue *output, ArgumentParserType type
-) {
-	int n = parser->num_args;
-
-	if (strlen(name) >= MAX_NAME_LEN || strlen(longname) >= MAX_NAME_LEN)
+int argument_parser_add(ArgumentParser parser, ArgumentInfo info)
+{
+	if (strlen(info->name) >= MAX_NAME_LEN
+	 || strlen(info->longname) >= MAX_NAME_LEN)
 		return -1;
 
-	if (check_duplicate_name(parser, name, longname))
+	if (check_duplicate_name(parser, info->name, info->longname))
 		return -1;
 
-	parser->args[n].name = name;
-	parser->args[n].longname = longname;
-	parser->args[n].description = description;
-	parser->args[n].output = output;
-	parser->args[n].type = type;
-
-	parser->num_args++;
+	parser->info[parser->num_args++] = info;
 
 	return 0;
 }

@@ -3,34 +3,46 @@
 
 #include "argument-parser.h"
 
+char *name = "default name";
+bool flag = false;
+int port = 1584;
+
+struct argument_info argument_info[] = {
+	{
+		"n", "name", "this is name",
+		(ArgumentValue *) &name, ARGUMENT_PARSER_TYPE_STRING
+	},
+	{
+		"f", "flag", "this is flag",
+		(ArgumentValue *) &flag, ARGUMENT_PARSER_TYPE_BOOLEAN
+	},
+	{
+		"p", "port", "this is port number",
+		(ArgumentValue *) &port, ARGUMENT_PARSER_TYPE_INTEGER
+	}
+};
+
 int main(int argc, char *argv[])
 {
 	ArgumentParser parser;
-	char *name;
-	bool flag;
-	int port;
-
+	
 	parser = argument_parser_create(argv);
 	if (parser == NULL)
 		exit(EXIT_FAILURE);
 
-	name = "default name";
-	flag = false;
-	port = 1584;
-
 	argument_parser_add(
-		parser, "n", "name", "this is name", (ArgumentValue *) &name,
-		ARGUMENT_PARSER_TYPE_STRING
+		parser, &(struct argument_info) { "n", "name", "this is name", (ArgumentValue *) &name,
+		ARGUMENT_PARSER_TYPE_STRING }
 	);
 
 	argument_parser_add(
-		parser, "f", "flag", "this is flag", (ArgumentValue *) &flag,
-		ARGUMENT_PARSER_TYPE_BOOLEAN
+		parser, &(struct argument_info) { "f", "flag", "this is flag", (ArgumentValue *) &flag,
+		ARGUMENT_PARSER_TYPE_BOOLEAN }
 	);
 
 	argument_parser_add(
-		parser, "p", "port", "this is port number", (ArgumentValue *) &port,
-		ARGUMENT_PARSER_TYPE_INTEGER
+		parser, &(struct argument_info) { "p", "port", "this is port number", (ArgumentValue *) &port,
+		ARGUMENT_PARSER_TYPE_INTEGER }
 	);
 
 	argument_parser_parse(parser);

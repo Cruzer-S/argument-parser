@@ -10,6 +10,7 @@
 struct argument_parser;
 
 typedef struct argument_parser *ArgumentParser;
+typedef struct argument_info *ArgumentInfo;
 
 typedef enum argument_parser_type {
 	ARGUMENT_PARSER_TYPE_INTEGER	= 0x0001,
@@ -24,11 +25,18 @@ typedef union argument_value {
 	bool b;
 } ArgumentValue;
 
+struct argument_info {
+	char *name;
+	char *longname;
+	char *description;
+
+	ArgumentValue *output;
+	ArgumentParserType type;
+};
+
 ArgumentParser argument_parser_create(char *args[]);
 
-int argument_parser_add(ArgumentParser,
-			char *name, char *longname, char *description,
-			ArgumentValue *output, ArgumentParserType );
+int argument_parser_add(ArgumentParser , ArgumentInfo );
 
 int argument_parser_parse(ArgumentParser );
 
