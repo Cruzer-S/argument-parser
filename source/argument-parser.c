@@ -61,12 +61,15 @@ ArgumentParser argument_parser_create(char *args[])
 	return parser;
 }
 
-void argument_parser_add(
+int argument_parser_add(
 	ArgumentParser parser,
 	char name[MAX_NAME_LEN], char longname[MAX_NAME_LEN], char *description,
 	ArgumentValue *output, ArgumentParserType type
 ) {
 	int n = parser->num_args;
+
+	if (strlen(name) >= MAX_NAME_LEN || strlen(longname) >= MAX_NAME_LEN)
+		return -1;
 
 	parser->args[n].name = name;
 	parser->args[n].longname = longname;
@@ -75,6 +78,8 @@ void argument_parser_add(
 	parser->args[n].type = type;
 
 	parser->num_args++;
+
+	return 0;
 }
 
 int argument_parser_parse(ArgumentParser parser)
