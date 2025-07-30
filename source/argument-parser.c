@@ -133,7 +133,7 @@ int argument_parser_parse(ArgumentParser parser)
 			return -1;
 
 		if (info->type & ARGUMENT_PARSER_TYPE_BOOLEAN) {
-			*info->output = (ArgumentValue)1;
+			info->output->b = true;
 			continue;
 		}
 
