@@ -3,9 +3,15 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <errno.h>
 
-struct parsed_argument {
-	char name[MAX_NAME_LEN];
+#define ERR(PARSER, ...) do {						      \
+	snprintf((PARSER)->error, sizeof((PARSER)->error), __VA_ARGS__);      \
+	return -1;							      \
+} while (false)
+
+struct argument_pair {
+	char *key;
 	char *value;
 };
 
@@ -13,116 +19,222 @@ struct argument_parser {
 	int argc;
 	char **argv;
 
-	int num_args;
+	int ninfo;
 	ArgumentInfo info[MAX_ARGUMENTS];
 
-	int num_parsed;
-	struct parsed_argument parsed[MAX_ARGUMENTS];
+	int npair;
+	struct argument_pair pair[MAX_ARGUMENTS];
+
+	char error[BUFSIZ];
 };
 
-static struct argument_info *find_argument(
-	ArgumentParser parser, const char *name
+static struct argument_info *find_argument_info(
+	ArgumentParser parser, const char *name, const char *longname
 ) {
-	for (int i = 0; i < parser->num_args; i++) {
-		if (strcmp(parser->info[i]->name, name) == 0 ||
-		    strcmp(parser->info[i]->longname, name) == 0)
-		{
+	for (int i = 0; i < parser->ninfo; i++) {
+		if (name && !strcmp(parser->info[i]->name, name))
 			return parser->info[i];
-		}
+
+		if (longname && !strcmp(parser->info[i]->longname, longname))
+			return parser->info[i];
 	}
 
 	return NULL;
 }
 
-ArgumentParser argument_parser_create(char *args[])
+static struct argument_pair *find_argument_pair(
+	ArgumentParser parser, const char *name, const char *longname
+) {
+	for (int i = 0; i < parser->npair; i++) {
+		if (name && !strcmp(parser->pair[i].key, name))
+			return &parser->pair[i];
+
+		if (longname && !strcmp(parser->pair[i].key, longname))
+			return &parser->pair[i];
+	}
+
+	return NULL;
+}
+
+static int extract_pairs(ArgumentParser parser)
+{
+	struct argument_pair *pair;
+	struct argument_info *info;
+	char *argv, *has_value;
+	bool parse_key;
+
+	parse_key = true;
+	for (int i = 1; i < parser->argc; i++) {
+		pair = &parser->pair[parser->npair];
+		argv = parser->argv[i];
+
+		if ( !parse_key ) {
+			info = find_argument_info(parser, pair->key, NULL);
+			if (info == NULL)
+				ERR(parser, "invalid option %s", pair->key);
+
+			if (info->type == ARGUMENT_PARSER_TYPE_FLAG) {
+				argv = NULL;
+				i--; // re-parse argv[i] as a key
+			} else if (*argv == '\0') {
+				ERR(parser,
+				    "empty value are not allowed for %s",
+				    pair->key);
+			}
+
+			pair->value = argv;
+			parser->npair++;
+			parse_key = true;
+
+			continue;
+		}
+
+		if (*argv++ != '-') // option does not start with '-'
+			ERR(parser, "option must be started with -");
+
+		if (*argv != '-') { // short-key
+			if (*argv == '\0') // zero-length key
+				ERR(parser, "option is missing after -");
+
+			pair->key = argv;
+			parse_key = false;
+
+			continue;
+		}
+
+		// long-key
+		has_value = strchr(++argv, '=');
+		if (has_value)
+			*has_value++ = '\0';
+
+		pair->key = argv;
+		if (*pair->key == '\0') // zero-length key
+			ERR(parser, "empty option are not allowed");
+
+		info = find_argument_info(parser, NULL, pair->key);
+		if (info == NULL)
+			ERR(parser, "invalid option %s", pair->key);
+
+		if (info->type == ARGUMENT_PARSER_TYPE_FLAG) {
+			if (has_value) // flag type does not take a value
+				ERR(parser, "option %s doesn't take value",
+					    pair->key);
+		} else {
+			if (!has_value) // non-flag type requires a value
+				ERR(parser, "option %s requires a value",
+					    pair->key);
+		}
+
+		pair->value = has_value;
+		if (pair->value && *pair->value == '\0') // zero-length value
+			ERR(parser, "empty value are not allowed for %s",
+       				    pair->key);
+
+		parser->npair++;
+		parse_key = true;
+	}
+
+	if ( !parse_key ) { // check whether missing value or just flag type
+		info = find_argument_info(parser, pair->key, NULL);
+		if (info == NULL)
+			ERR(parser, "invalid option %s", pair->key);
+
+		if (info->type != ARGUMENT_PARSER_TYPE_FLAG)
+			ERR(parser, "option %s requires a value", pair->key);
+
+		pair->value = NULL;
+		parser->npair++;
+	}
+
+	return 0;
+}
+
+ArgumentParser argument_parser_create(int argc, char *argv[])
 {
 	ArgumentParser parser = malloc(sizeof(struct argument_parser));
 
 	if (parser == NULL)
-		return NULL;
+		goto RETURN_NULL;
 
-	parser->num_args = 0;
-	parser->num_parsed = 0;
+	parser->argc = argc;
+	parser->argv = malloc(sizeof(char *) * parser->argc);
+	if (parser->argv == NULL)
+		goto FREE_PARSER;
 
-	parser->argv = args;
-	for (int i = 0; args[i]; i++)
-		parser->argc = i;
+	for (int i = 0; i < parser->argc; i++) {
+		parser->argv[i] = malloc(strlen(argv[i]) + 1);
+		if (parser->argv[i] == NULL) {
+			for (int j = i - 1; j >= 0; j--)
+				free(parser->argv[i]);
+
+			goto FREE_PARSER;
+		}
+
+		strcpy(parser->argv[i], argv[i]);
+	}
+
+	parser->ninfo = 0;
+	parser->npair = 0;
 
 	return parser;
+
+FREE_PARSER:	free(parser);
+RETURN_NULL:	return NULL;
 }
 
 void argument_parser_add(ArgumentParser parser, ArgumentInfo info)
 {
-	parser->info[parser->num_args++] = info;
+	parser->info[parser->ninfo++] = info;
 }
 
 int argument_parser_parse(ArgumentParser parser)
 {
 	struct argument_info *info;
-	struct parsed_argument *parsed;
-	
-	for (int i = 1; i <= parser->argc; i++) {
-		char *arg, *end;
+	struct argument_pair *pair;
 
-		parsed = &parser->parsed[parser->num_parsed];
-		arg = parser->argv[i];
+	if (extract_pairs(parser) == -1)
+		return -1;
 
-		if (*arg != '-')
-			return -1;
-		arg++;
+	for (int i = 0; i < parser->ninfo; i++) {
+		info = parser->info[i];
 
-		if (*arg == '-') {
-			arg++;
+		if (!(info->type & ARGUMENT_PARSER_TYPE_MANDATORY))
+			continue;
 
-			end = strchr(arg, '=');
-			if (end == NULL) {
-				strcpy(parsed->name, arg);
-			} else {
-				strncpy(parsed->name, arg, end - arg);
-				parsed->name[end - arg] = '\0';
-			}
+		if (find_argument_pair(parser, info->name, info->longname))
+			continue;
 
-			end++;
-		} else {
-			strcpy(parsed->name, arg);
-
-			if (parser->argv[i + 1] == NULL
-			||  *parser->argv[i + 1] == '-')
-			{
-				parser->num_parsed++;
-				parsed->value = NULL;
-				continue;
-			}
-
-			arg = parser->argv[++i];
-			end = arg;
-		}
-
-		parsed->value = end;
-		parser->num_parsed++;
+		ERR(parser, "option %s is mandatory", info->name);
 	}
 
-	for (int i = 0; i < parser->num_parsed; i++) {
-		parsed = &parser->parsed[i];
-		info = find_argument(parser, parsed->name);
+	for (int i = 0; i < parser->npair; i++) {
+		pair = &parser->pair[i];
 
+		info = find_argument_info(parser, pair->key, pair->key);
 		if (info == NULL)
-			return -1;
+			ERR(parser, "invalid option %s", pair->key);
 
 		if (info->type & ARGUMENT_PARSER_TYPE_FLAG) {
-			info->output->b = true;
+			info->output->b = 1;
 			continue;
 		}
 
-		if (parsed->value == NULL)
-			return -1;
-
 		if (info->type & ARGUMENT_PARSER_TYPE_INTEGER) {
-			info->output->i = atoi(parsed->value);
+			long value;
+			char *endptr;
+
+			value = strtol(pair->value, &endptr, 10);
+			if (pair->value == endptr)
+				ERR(parser, "invalid value %s for %s",
+					    pair->value, pair->key);
+
+			if (errno == ERANGE)
+				ERR(parser, "value %s out of range",
+					    pair->value);
+
+			info->output->i = value;
 		} else if (info->type & ARGUMENT_PARSER_TYPE_STRING) {
-			info->output->s = parsed->value;
-		} else {
-			return -1;
+			info->output->s = pair->value;
 		}
 	}
 
@@ -132,4 +244,9 @@ int argument_parser_parse(ArgumentParser parser)
 void argument_parser_destroy(ArgumentParser parser)
 {
 	free(parser);
+}
+
+char *argument_parser_get_error(ArgumentParser parser)
+{
+	return parser->error;
 }

@@ -34,12 +34,14 @@ struct argument_info {
 	ArgumentParserType type;
 };
 
-ArgumentParser argument_parser_create(char *args[]);
+ArgumentParser argument_parser_create(int argc, char *argv[]);
 
 void argument_parser_add(ArgumentParser , ArgumentInfo );
 
 int argument_parser_parse(ArgumentParser );
 
 void argument_parser_destroy(ArgumentParser );
+
+char *argument_parser_get_error(ArgumentParser );
 
 #endif
