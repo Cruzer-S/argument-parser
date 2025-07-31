@@ -243,6 +243,10 @@ int argument_parser_parse(ArgumentParser parser)
 
 void argument_parser_destroy(ArgumentParser parser)
 {
+	for (int i = 0; i < parser->argc; i++)
+		free(parser->argv[i]);
+
+	free(parser->argv);
 	free(parser);
 }
 
