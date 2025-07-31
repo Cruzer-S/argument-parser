@@ -15,7 +15,7 @@ typedef struct argument_info *ArgumentInfo;
 typedef enum argument_parser_type {
 	ARGUMENT_PARSER_TYPE_INTEGER	= 0x0001,
 	ARGUMENT_PARSER_TYPE_STRING	= 0x0002,
-	ARGUMENT_PARSER_TYPE_BOOLEAN	= 0x0004,
+	ARGUMENT_PARSER_TYPE_FLAG	= 0x0004,
 	ARGUMENT_PARSER_TYPE_MANDATORY	= 0x0008,
 } ArgumentParserType;
 

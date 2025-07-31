@@ -109,7 +109,7 @@ int argument_parser_parse(ArgumentParser parser)
 		if (info == NULL)
 			return -1;
 
-		if (info->type & ARGUMENT_PARSER_TYPE_BOOLEAN) {
+		if (info->type & ARGUMENT_PARSER_TYPE_FLAG) {
 			info->output->b = true;
 			continue;
 		}

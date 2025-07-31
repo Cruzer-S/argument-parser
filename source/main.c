@@ -16,7 +16,7 @@ struct argument_info argument_info[] = {
 	},
 	{
 		"f", "flag", "this is flag",
-		(ArgumentValue *) &flag, ARGUMENT_PARSER_TYPE_BOOLEAN
+		(ArgumentValue *) &flag, ARGUMENT_PARSER_TYPE_FLAG
 	},
 	{
 		"p", "port", "this is port number",
