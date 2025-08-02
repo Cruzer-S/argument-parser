@@ -13,17 +13,17 @@ int port = 1584;
 
 struct argument_info argument_info[] = {
 	{
-		"n", "name", "this is name",
+		"name", "n", "this is name",
 		(ArgumentValue *) &name,
 		ARGUMENT_PARSER_TYPE_STRING
 	},
 	{
-		"f", "flag", "this is flag",
+		"flag", "f", "this is flag",
 		(ArgumentValue *) &flag,
 		ARGUMENT_PARSER_TYPE_FLAG
 	},
 	{
-		"p", "port", "this is port number",
+		"port", "p", "this is port number",
 		(ArgumentValue *) &port,
 		ARGUMENT_PARSER_TYPE_INTEGER | ARGUMENT_PARSER_TYPE_MANDATORY
 	}

@@ -29,13 +29,13 @@ struct argument_parser {
 };
 
 static struct argument_info *find_argument_info(
-	ArgumentParser parser, const char *name, const char *longname
+	ArgumentParser parser, const char *name, const char *shrt
 ) {
 	for (int i = 0; i < parser->ninfo; i++) {
 		if (name && !strcmp(parser->info[i]->name, name))
 			return parser->info[i];
 
-		if (longname && !strcmp(parser->info[i]->longname, longname))
+		if (shrt && !strcmp(parser->info[i]->shrt, shrt))
 			return parser->info[i];
 	}
 
@@ -43,13 +43,13 @@ static struct argument_info *find_argument_info(
 }
 
 static struct argument_pair *find_argument_pair(
-	ArgumentParser parser, const char *name, const char *longname
+	ArgumentParser parser, const char *name, const char *shrt
 ) {
 	for (int i = 0; i < parser->npair; i++) {
 		if (name && !strcmp(parser->pair[i].key, name))
 			return &parser->pair[i];
 
-		if (longname && !strcmp(parser->pair[i].key, longname))
+		if (shrt && !strcmp(parser->pair[i].key, shrt))
 			return &parser->pair[i];
 	}
 
@@ -69,7 +69,7 @@ static int extract_pairs(ArgumentParser parser)
 		argv = parser->argv[i];
 
 		if ( !parse_key ) {
-			info = find_argument_info(parser, pair->key, NULL);
+			info = find_argument_info(parser, NULL, pair->key);
 			if (info == NULL)
 				ERR(parser, "invalid option %s", pair->key);
 
@@ -111,7 +111,7 @@ static int extract_pairs(ArgumentParser parser)
 		if (*pair->key == '\0') // zero-length key
 			ERR(parser, "empty option are not allowed");
 
-		info = find_argument_info(parser, NULL, pair->key);
+		info = find_argument_info(parser, pair->key, NULL);
 		if (info == NULL)
 			ERR(parser, "invalid option %s", pair->key);
 
@@ -135,7 +135,7 @@ static int extract_pairs(ArgumentParser parser)
 	}
 
 	if ( !parse_key ) { // check whether missing value or just flag type
-		info = find_argument_info(parser, pair->key, NULL);
+		info = find_argument_info(parser, NULL, pair->key);
 		if (info == NULL)
 			ERR(parser, "invalid option %s", pair->key);
 
@@ -201,7 +201,7 @@ int argument_parser_parse(ArgumentParser parser)
 		if (!(info->type & ARGUMENT_PARSER_TYPE_MANDATORY))
 			continue;
 
-		if (find_argument_pair(parser, info->name, info->longname))
+		if (find_argument_pair(parser, info->name, info->shrt))
 			continue;
 
 		ERR(parser, "option %s is mandatory", info->name);

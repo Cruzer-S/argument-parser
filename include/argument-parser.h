@@ -27,7 +27,7 @@ typedef union argument_value {
 
 struct argument_info {
 	char *name;
-	char *longname;
+	char *shrt;
 	char *description;
 
 	ArgumentValue *output;
